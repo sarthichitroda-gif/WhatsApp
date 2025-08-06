@@ -1,0 +1,34 @@
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+import requests
+import os
+
+app = FastAPI()
+
+OPENWEATHER_API_KEY = "YOUR_API_KEY"  # Replace with your OpenWeather API key
+
+@app.post("/webhook")
+async def webhook(request: Request):
+    req = await request.json()
+    intent_name = req.get("queryResult", {}).get("intent", {}).get("displayName")
+    city = req.get("queryResult", {}).get("parameters", {}).get("city")
+
+    if intent_name == "GetWeather":  # Replace with your intent name
+        if city:
+            # Call OpenWeather API
+            api_url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={OPENWEATHER_API_KEY}&units=metric"
+            response = requests.get(api_url)
+
+            if response.status_code == 200:
+                data = response.json()
+                temp = data["main"]["temp"]
+                condition = data["weather"][0]["description"]
+                fulfillment_text = f"The current temperature in {city} is {temp}°C with {condition}."
+            else:
+                fulfillment_text = f"Sorry, I couldn't fetch the weather for {city}."
+        else:
+            fulfillment_text = "Please tell me the city you want the weather for."
+    else:
+        fulfillment_text = "Intent not handled."
+
+    return JSONResponse(content={"fulfillmentText": fulfillment_text})
