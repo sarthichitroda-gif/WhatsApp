@@ -5,7 +5,19 @@ import os
 
 app = FastAPI()
 
-OPENWEATHER_API_KEY = "52b258a0392ab12e1128b67868b54787"  # Replace with your OpenWeather API key
+OPENWEATHER_API_KEY = "52b258a0392ab12e1128b67868b54787"
+
+from fastapi import FastAPI
+
+api = FastAPI()
+
+@api.get("/")
+def read_root():
+    return {"message": "API is working"}
+
+@api.get("/test")
+def test():
+    return {"message": "Test endpoint working"}
 
 @app.post("/webhook")
 async def webhook(request: Request):
@@ -13,9 +25,8 @@ async def webhook(request: Request):
     intent_name = req.get("queryResult", {}).get("intent", {}).get("displayName")
     city = req.get("queryResult", {}).get("parameters", {}).get("city")
 
-    if intent_name == "LinkedIn Profile Summarizer":  # Replace with your intent name
+    if intent_name == "LinkedIn Profile Summarizer":
         if city:
-            # Call OpenWeather API
             api_url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={OPENWEATHER_API_KEY}&units=metric"
             response = requests.get(api_url)
 
