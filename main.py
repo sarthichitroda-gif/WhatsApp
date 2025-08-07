@@ -23,7 +23,7 @@ async def root():
 async def webhook(request: Request):
     req = await request.json()
     intent_name = req.get("queryResult", {}).get("intent", {}).get("displayName")
-    city = req.get("queryResult", {}).get("parameters", {}).get("city")
+    city = req.get("queryResult", {}).get("parameters", {}).get("geo-city")
 
     if intent_name == "LinkedIn Profile Summarizer":
         if city:
