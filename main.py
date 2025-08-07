@@ -15,6 +15,10 @@ def read_root():
 def test():
     return {"message": "Test endpoint working"}
 
+@app.get("/")
+async def root():
+    return {"message": "API is working"}
+
 @app.post("/webhook")
 async def webhook(request: Request):
     req = await request.json()
