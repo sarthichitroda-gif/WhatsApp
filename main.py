@@ -7,15 +7,11 @@ app = FastAPI()
 
 OPENWEATHER_API_KEY = "52b258a0392ab12e1128b67868b54787"
 
-from fastapi import FastAPI
-
-api = FastAPI()
-
-@api.get("/")
+@app.get("/")
 def read_root():
     return {"message": "API is working"}
 
-@api.get("/test")
+@app.get("/test")
 def test():
     return {"message": "Test endpoint working"}
 
