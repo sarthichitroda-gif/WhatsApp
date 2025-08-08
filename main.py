@@ -84,8 +84,32 @@ async def webhook(request: Request):
             )
 
             if response.status_code == 200:
-                data = response.json()
-                fulfillment_text = f"Here’s the person data: {data}"
+                resp_json = response.json()
+                data = resp_json.get("data", {})
+
+                full_name = data.get("fullName", "N/A")
+                headline = data.get("headline", "N/A")
+                location = data.get("location", "N/A")
+                linkedin_profile = data.get("linkedinUrl", "N/A")
+                person_id = data.get("personId", "N/A")
+
+                # Example: top 3 skills
+                skills = data.get("skills", [])
+                top_skills = ", ".join(skill.get("name") for skill in skills[:3]) if skills else "N/A"
+
+                # Education: Just list school names (top 2)
+                education = data.get("education", [])
+                schools = ", ".join(edu.get("school") for edu in education[:2]) if education else "N/A"
+
+                fulfillment_text = (
+                    f"Name: {full_name}\n"
+                    f"Headline: {headline}\n"
+                    f"Location: {location}\n"
+                    f"LinkedIn URL: {linkedin_profile}\n"
+                    f"Person ID: {person_id}\n"
+                    f"Top Skills: {top_skills}\n"
+                    f"Education: {schools}"
+                )
             else:
                 fulfillment_text = (
                     f"Error fetching person data: {response.status_code} - {response.text}"
