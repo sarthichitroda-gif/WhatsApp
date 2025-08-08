@@ -10,7 +10,6 @@ headers = {"Authorization": f"Bearer {API_KEY}"} if API_KEY else {}
 
 
 def get_person_id_from_linkedin(linkedin_url: str):
-    """Fetch the person ID from LinkedIn URL using the get-person API."""
     person_response = requests.get(
         f"{API_BASE_URL}/get-person",
         headers=headers,
@@ -22,12 +21,13 @@ def get_person_id_from_linkedin(linkedin_url: str):
 
     person_data = person_response.json()
 
-    # Adjust this based on your API's actual JSON structure
-    person_id = person_data.get("id")  # or person_data["data"]["id"] if nested
+    # Adjusted to get nested 'personId' inside 'data'
+    person_id = person_data.get("data", {}).get("personId")
     if not person_id:
         return None, "Person ID not found in API response."
 
     return person_id, None
+
 
 
 @app.post("/webhook")
