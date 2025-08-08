@@ -66,41 +66,7 @@ async def webhook(request: Request):
         # Handle API response
         if response.status_code == 200:
             data = response.json()
-
-            if intent == "GetPerson":
-                # Beautified output for person details
-                name = data.get("name", "N/A")
-                title = data.get("title", "N/A")
-                company = data.get("company", "N/A")
-                linkedin = data.get("linkedin", "N/A")
-
-                fulfillment_text = (
-                    f"👤 Name: {name}\n"
-                    f"💼 Title: {title}\n"
-                    f"🏢 Company: {company}\n"
-                    f"🔗 LinkedIn: {linkedin}"
-                )
-
-            elif intent == "GetSearchHistory":
-                history = data.get("history", [])
-                if history:
-                    fulfillment_text = "📜 Search History:\n" + "\n".join(
-                        f"- {item}" for item in history
-                    )
-                else:
-                    fulfillment_text = "No search history found."
-
-            elif intent == "GetServiceStatus":
-                status = data.get("status", "Unknown")
-                fulfillment_text = f"📡 Service Status: {status}"
-
-            elif intent == "GetPersonalityAnalysis":
-                analysis = data.get("analysis", "No analysis available.")
-                fulfillment_text = f"🧠 Personality Analysis:\n{analysis}"
-
-            else:
-                fulfillment_text = f"Here’s the result:\n{data}"
-
+            fulfillment_text = f"Here’s the result: {data}"
         else:
             fulfillment_text = (
                 f"Error fetching data from service: {response.status_code} - {response.text}"
