@@ -106,7 +106,6 @@ async def webhook(request: Request):
                     f"Headline: {headline}\n"
                     f"Location: {location}\n"
                     f"LinkedIn URL: {linkedin_profile}\n"
-                    f"Person ID: {person_id}\n"
                     f"Top Skills: {top_skills}\n"
                     f"Education: {schools}"
                 )
@@ -120,10 +119,16 @@ async def webhook(request: Request):
             if not linkedin_url:
                 return {"fulfillmentText": "Please provide a LinkedIn URL."}
 
+            # Step 1: Get personId from linkedinUrl
+            person_id, error = get_person_id_from_linkedin(linkedin_url)
+            if error:
+                return {"fulfillmentText": error}
+
+            # Step 2: Call personality analysis API with personId
             response = requests.get(
                 f"{API_BASE_URL}/person-personality-analysis",
                 headers=headers,
-                params={"linkedinUrl": linkedin_url}
+                params={"personId": person_id}
             )
 
             if response.status_code == 200:
