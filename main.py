@@ -29,6 +29,73 @@ def get_person_id_from_linkedin(linkedin_url: str):
     return person_id, None
 
 
+def format_personality_analysis(data: dict) -> str:
+    data = data.get("data", {})
+
+    linkedin_url = data.get("linkedinUrl", "N/A")
+    person_id = data.get("personId", "N/A")
+    analysis_date = data.get("analysisDate", "N/A")
+
+    disc = data.get("discProfile", {})
+    disc_summary = data.get("discProfileShortSummary", "")
+
+    detailed = data.get("detailedAnalysis", {})
+    recommendations = data.get("recommendations", {})
+    interests = data.get("interestsDetected", [])
+
+    def format_list(items):
+        return "\n".join(f"- {item}" for item in items)
+
+    formatted = f"""Personality Analysis Summary
+
+LinkedIn URL: {linkedin_url}
+Person ID: {person_id}
+Analysis Date: {analysis_date}
+
+DISC Profile
+- Dominance: {disc.get("dominance", "N/A")}
+- Influence: {disc.get("influence", "N/A")}
+- Steadiness: {disc.get("steadiness", "N/A")}
+- Conscientiousness: {disc.get("conscientiousness", "N/A")}
+
+Summary:
+{disc_summary}
+
+Detailed Analysis
+
+Strengths:
+{format_list(detailed.get("strengths", []))}
+
+Weaknesses:
+{format_list(detailed.get("weaknesses", []))}
+
+Communication Style:
+{detailed.get("communicationStyle", "N/A")}
+
+Work Style:
+{detailed.get("workStyle", "N/A")}
+
+Leadership Style:
+{detailed.get("leadershipStyle", "N/A")}
+
+Team Collaboration:
+{detailed.get("teamCollaboration", "N/A")}
+
+Recommendations
+
+Suggested Outreach Approach:
+- Best Engaged Via: {", ".join(recommendations.get("suggestedOutreachApproach", {}).get("bestEngagedVia", []))}
+- Messaging Tip: {recommendations.get("suggestedOutreachApproach", {}).get("messagingTip", "N/A")}
+- Preferred Call to Action: {recommendations.get("suggestedOutreachApproach", {}).get("preferredCTA", "N/A")}
+
+Tone to Use:
+{recommendations.get("toneToUse", "N/A")}
+
+Interests Detected:
+{", ".join(interests) if interests else "N/A"}
+"""
+    return formatted
+
 
 @app.post("/webhook")
 async def webhook(request: Request):
@@ -133,7 +200,7 @@ async def webhook(request: Request):
 
             if response.status_code == 200:
                 data = response.json()
-                fulfillment_text = f"Here’s the analysis: {data}"
+                fulfillment_text = format_personality_analysis(data)
             else:
                 fulfillment_text = (
                     f"Error fetching personality analysis: {response.status_code} - {response.text}"
