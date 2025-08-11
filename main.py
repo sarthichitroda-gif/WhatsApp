@@ -174,7 +174,7 @@ async def webhook(request: Request):
                 )
             else:
                 fulfillment_text = (
-                    f"There was an error fetching the details of the user. Please try again later."
+                    f"return None, Please make sure the input is in proper format https://www.linkedin.com/in/userid"
                 )
 
         elif intent == "GetPersonalityAnalysis":
