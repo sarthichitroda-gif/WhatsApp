@@ -5,7 +5,6 @@ app = FastAPI()
 
 API_BASE_URL = "https://people-intel-service-test-3lu6lw5c5q-as.a.run.app/api/v1"
 API_KEY = "YOUR_API_KEY"  # Replace with your real API key
-
 headers = {"Authorization": f"Bearer {API_KEY}"} if API_KEY else {}
 
 
@@ -15,30 +14,21 @@ def get_person_id_from_linkedin(linkedin_url: str):
         headers=headers,
         params={"linkedinUrl": linkedin_url}
     )
-
     if person_response.status_code != 200:
         return None, f"Error fetching person: {person_response.status_code} - {person_response.text}"
 
     person_data = person_response.json()
-
-    # Adjusted to get nested 'personId' inside 'data'
     person_id = person_data.get("data", {}).get("personId")
     if not person_id:
         return None, "Person ID not found in API response."
-
     return person_id, None
 
 
 def format_personality_analysis(data: dict) -> str:
     data = data.get("data", {})
-
     linkedin_url = data.get("linkedinUrl", "N/A")
-    person_id = data.get("personId", "N/A")
-    analysis_date = data.get("analysisDate", "N/A")
-
     disc = data.get("discProfile", {})
     disc_summary = data.get("discProfileShortSummary", "")
-
     detailed = data.get("detailedAnalysis", {})
     recommendations = data.get("recommendations", {})
     interests = data.get("interestsDetected", [])
@@ -46,7 +36,7 @@ def format_personality_analysis(data: dict) -> str:
     def format_list(items):
         return "\n".join(f"- {item}" for item in items)
 
-    formatted = f"""Personality Analysis Summary
+    return f"""Personality Analysis Summary
 
 LinkedIn URL: {linkedin_url}
 
@@ -60,7 +50,6 @@ Summary:
 {disc_summary}
 
 Detailed Analysis
-
 Strengths:
 {format_list(detailed.get("strengths", []))}
 
@@ -80,7 +69,6 @@ Team Collaboration:
 {detailed.get("teamCollaboration", "N/A")}
 
 Recommendations
-
 Suggested Outreach Approach:
 - Best Engaged Via: {", ".join(recommendations.get("suggestedOutreachApproach", {}).get("bestEngagedVia", []))}
 - Messaging Tip: {recommendations.get("suggestedOutreachApproach", {}).get("messagingTip", "N/A")}
@@ -92,7 +80,29 @@ Tone to Use:
 Interests Detected:
 {", ".join(interests) if interests else "N/A"}
 """
-    return formatted
+
+
+def get_from_context(req, key):
+    """Retrieve a value from Dialogflow contexts."""
+    for ctx in req.get("queryResult", {}).get("outputContexts", []):
+        if ctx["name"].endswith("/contexts/linkedin_context"):
+            return ctx["parameters"].get(key)
+    return None
+
+
+def save_to_context(req, linkedin_url=None, person_id=None):
+    """Create output context JSON for Dialogflow."""
+    params = {}
+    if linkedin_url:
+        params["linkedinUrl"] = linkedin_url
+    if person_id:
+        params["personId"] = person_id
+
+    return [{
+        "name": f"{req['session']}/contexts/linkedin_context",
+        "lifespanCount": 5,
+        "parameters": params
+    }]
 
 
 @app.post("/webhook")
@@ -102,43 +112,15 @@ async def webhook(request: Request):
     params = req.get("queryResult", {}).get("parameters", {})
 
     fulfillment_text = "Sorry, I couldn't process your request."
+    output_contexts = []
 
     try:
-        if intent in ["GetSearchHistory", "GetServiceStatus"]:
-            linkedin_url = params.get("linkedinUrl")
-            if not linkedin_url:
-                return {"fulfillmentText": "Please provide a LinkedIn URL."}
+        # Get stored values if available
+        linkedin_url = params.get("linkedinUrl") or get_from_context(req, "linkedinUrl")
+        person_id = get_from_context(req, "personId")
 
-            # Step 1: Get Person ID from LinkedIn
-            person_id, error = get_person_id_from_linkedin(linkedin_url)
-            if error:
-                return {"fulfillmentText": error}
-
-            # Step 2: Call the correct API based on intent
-            if intent == "GetSearchHistory":
-                endpoint = "person-search-history"
-                param_key = "userId"
-            else:
-                endpoint = "person-service-status"
-                param_key = "personId"
-
-            response = requests.get(
-                f"{API_BASE_URL}/{endpoint}",
-                headers=headers,
-                params={param_key: person_id}
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-                fulfillment_text = f"Here’s the result: {data}"
-            else:
-                fulfillment_text = (
-                    f"Error fetching data from {endpoint}: "
-                    f"{response.status_code} - {response.text}"
-                )
-
-        elif intent == "GetPerson":
-            linkedin_url = params.get("linkedinUrl")
+        # ----- INTENT: GetPerson -----
+        if intent == "GetPerson":
             if not linkedin_url:
                 return {"fulfillmentText": "Please provide a LinkedIn URL."}
 
@@ -149,20 +131,14 @@ async def webhook(request: Request):
             )
 
             if response.status_code == 200:
-                resp_json = response.json()
-                data = resp_json.get("data", {})
-
+                data = response.json().get("data", {})
                 full_name = data.get("fullName", "N/A")
                 headline = data.get("headline", "N/A")
                 location = data.get("location", "N/A")
                 linkedin_profile = data.get("linkedinUrl", "N/A")
                 person_id = data.get("personId", "N/A")
-
-                # Example: top 3 skills
                 skills = data.get("skills", [])
                 top_skills = ", ".join(skill.get("name") for skill in skills[:3]) if skills else "N/A"
-
-                # Education: Just list school names (top 2)
                 education = data.get("education", [])
                 schools = ", ".join(edu.get("school") for edu in education[:2]) if education else "N/A"
 
@@ -174,22 +150,67 @@ async def webhook(request: Request):
                     f"Top Skills: {top_skills}\n"
                     f"Education: {schools}"
                 )
-            else:
-                fulfillment_text = (
-                    f"Error fetching person data: {response.status_code} - {response.text}"
-                )
 
-        elif intent == "GetPersonalityAnalysis":
-            linkedin_url = params.get("linkedinUrl")
-            if not linkedin_url:
+                # Save for later intents
+                output_contexts = save_to_context(req, linkedin_url=linkedin_url, person_id=person_id)
+
+            else:
+                fulfillment_text = f"Error fetching person data: {response.status_code} - {response.text}"
+
+        # ----- INTENT: GetSearchHistory -----
+        elif intent == "GetSearchHistory":
+            if not linkedin_url and not person_id:
                 return {"fulfillmentText": "Please provide a LinkedIn URL."}
 
-            # Step 1: Get personId from linkedinUrl
-            person_id, error = get_person_id_from_linkedin(linkedin_url)
-            if error:
-                return {"fulfillmentText": error}
+            if not person_id:
+                person_id, error = get_person_id_from_linkedin(linkedin_url)
+                if error:
+                    return {"fulfillmentText": error}
 
-            # Step 2: Call personality analysis API with personId
+            response = requests.get(
+                f"{API_BASE_URL}/person-search-history",
+                headers=headers,
+                params={"userId": person_id}
+            )
+
+            if response.status_code == 200:
+                fulfillment_text = f"Here’s the result: {response.json()}"
+                output_contexts = save_to_context(req, linkedin_url=linkedin_url, person_id=person_id)
+            else:
+                fulfillment_text = f"Error fetching data: {response.status_code} - {response.text}"
+
+        # ----- INTENT: GetServiceStatus -----
+        elif intent == "GetServiceStatus":
+            if not linkedin_url and not person_id:
+                return {"fulfillmentText": "Please provide a LinkedIn URL."}
+
+            if not person_id:
+                person_id, error = get_person_id_from_linkedin(linkedin_url)
+                if error:
+                    return {"fulfillmentText": error}
+
+            response = requests.get(
+                f"{API_BASE_URL}/person-service-status",
+                headers=headers,
+                params={"personId": person_id}
+            )
+
+            if response.status_code == 200:
+                fulfillment_text = f"Here’s the result: {response.json()}"
+                output_contexts = save_to_context(req, linkedin_url=linkedin_url, person_id=person_id)
+            else:
+                fulfillment_text = f"Error fetching data: {response.status_code} - {response.text}"
+
+        # ----- INTENT: GetPersonalityAnalysis -----
+        elif intent == "GetPersonalityAnalysis":
+            if not linkedin_url and not person_id:
+                return {"fulfillmentText": "Please provide a LinkedIn URL."}
+
+            if not person_id:
+                person_id, error = get_person_id_from_linkedin(linkedin_url)
+                if error:
+                    return {"fulfillmentText": error}
+
             response = requests.get(
                 f"{API_BASE_URL}/person-personality-analysis",
                 headers=headers,
@@ -197,12 +218,10 @@ async def webhook(request: Request):
             )
 
             if response.status_code == 200:
-                data = response.json()
-                fulfillment_text = format_personality_analysis(data)
+                fulfillment_text = format_personality_analysis(response.json())
+                output_contexts = save_to_context(req, linkedin_url=linkedin_url, person_id=person_id)
             else:
-                fulfillment_text = (
-                    f"Error fetching personality analysis: {response.status_code} - {response.text}"
-                )
+                fulfillment_text = f"Error fetching personality analysis: {response.status_code} - {response.text}"
 
         else:
             fulfillment_text = "Sorry, I don't recognize this request."
@@ -210,4 +229,7 @@ async def webhook(request: Request):
     except Exception as e:
         fulfillment_text = f"An error occurred: {str(e)}"
 
-    return {"fulfillmentText": fulfillment_text}
+    return {
+        "fulfillmentText": fulfillment_text,
+        "outputContexts": output_contexts
+    }
