@@ -134,7 +134,7 @@ async def webhook(request: Request):
                 fulfillment_text = f"Here’s the result: {data}"
             else:
                 fulfillment_text = (
-                    f"There was an error fetching the details of the user. Please try again later "
+                    f"return None, Please make sure the input is in proper format https://www.linkedin.com/in/userid"
                 )
 
         elif intent == "GetPerson":
@@ -197,7 +197,7 @@ async def webhook(request: Request):
                 fulfillment_text = format_personality_analysis(data)
             else:
                 fulfillment_text = (
-                    f"There was an error fetching the details of the user. Please try again later"
+                    f"return None, Please make sure the input is in proper format https://www.linkedin.com/in/userid"
                 )
 
         else:
