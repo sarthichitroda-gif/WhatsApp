@@ -198,7 +198,7 @@ async def webhook(request: Request):
                 fulfillment_text = format_personality_analysis(data)
             else:
                 fulfillment_text = (
-                    f"Error fetching personality analysis: {response.status_code} - {response.text}"
+                    f"There was an error fetching the details of the user. Please try again after some time.""
                 )
 
         else:
