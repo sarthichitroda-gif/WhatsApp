@@ -174,7 +174,7 @@ async def webhook(request: Request):
                 )
             else:
                 fulfillment_text = (
-                    f"Error fetching person data: {response.status_code} - {response.text}"
+                    f"There was an error fetching the details of the user. Please try again after some time."
                 )
 
         elif intent == "GetPersonalityAnalysis":
