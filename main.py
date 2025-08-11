@@ -133,8 +133,8 @@ async def webhook(request: Request):
                 schools = ", ".join(edu.get("school") for edu in education[:2]) if education else "N/A"
 
                 positions=data.get("title", [])
-                position=", ".join(pos.get("title")for pos in positions[:0]) if positions else "N/A"
-                comp=", ".join(comp.get("company")for comp in positions[:0]) if positions else "N/A"
+                position=", ".join(pos.get("title")for pos in positions[:1]) if positions else "N/A"
+                company=", ".join(comp.get("company")for comp in positions[:1]) if positions else "N/A"
 
                 fulfillment_text = (
                     f"Name: {full_name}\n"
@@ -144,7 +144,7 @@ async def webhook(request: Request):
                     f"Top Skills: {top_skills}\n"
                     f"Education: {schools}\n"
                     f"Current Job Role:{position}\n"
-                    f"Current Organization:{comp}"
+                    f"Current Organization:{company}"
                 )
             else:
                 fulfillment_text = (
