@@ -132,6 +132,9 @@ async def webhook(request: Request):
                 education = data.get("education", [])
                 schools = ", ".join(edu.get("school") for edu in education[:2]) if education else "N/A"
 
+                position=data.get("title", "N/A")
+                company=data.get("company", "N/A")
+
                 fulfillment_text = (
                     f"Name: {full_name}\n"
                     f"Headline: {headline}\n"
@@ -139,6 +142,8 @@ async def webhook(request: Request):
                     f"LinkedIn URL: {linkedin_profile}\n"
                     f"Top Skills: {top_skills}\n"
                     f"Education: {schools}"
+                    f"Current Job Role":{position}"
+                    f"Current Organization":{company}"
                 )
             else:
                 fulfillment_text = (
