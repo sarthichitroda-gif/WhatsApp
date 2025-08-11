@@ -197,7 +197,7 @@ async def webhook(request: Request):
                 fulfillment_text = format_personality_analysis(data)
             else:
                 fulfillment_text = (
-                    f"return None, Please make sure the input is in proper format https://www.linkedin.com/in/userid"
+                    f"Please make sure the input is in proper format https://www.linkedin.com/in/userid"
                 )
 
         else:
