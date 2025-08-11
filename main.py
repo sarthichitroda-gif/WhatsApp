@@ -49,8 +49,6 @@ def format_personality_analysis(data: dict) -> str:
     formatted = f"""Personality Analysis Summary
 
 LinkedIn URL: {linkedin_url}
-Person ID: {person_id}
-Analysis Date: {analysis_date}
 
 DISC Profile
 - Dominance: {disc.get("dominance", "N/A")}
