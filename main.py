@@ -132,8 +132,9 @@ async def webhook(request: Request):
                 education = data.get("education", [])
                 schools = ", ".join(edu.get("school") for edu in education[:2]) if education else "N/A"
 
-                position=data.get("title", "N/A")
-                company=data.get("company", "N/A")
+                positions=data.get("title", [])
+                position=", ".join(pos.get("title")for pos in positions[:0]) if positions else "N/A"
+                company=", ".join(comp.get("company")for comp in positions[:0]) if positions else "N/A"
 
                 fulfillment_text = (
                     f"Name: {full_name}\n"
