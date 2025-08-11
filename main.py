@@ -193,8 +193,6 @@ async def webhook(request: Request):
                 params={"personId": person_id}
             )
             
-            time.sleep(10)
-            
             if response.status_code == 200:
                 data = response.json()
                 fulfillment_text = format_personality_analysis(data)
