@@ -142,8 +142,8 @@ async def webhook(request: Request):
                     f"Location: {location}\n"
                     f"LinkedIn URL: {linkedin_profile}\n"
                     f"Top Skills: {top_skills}\n"
-                    f"Education: {schools}"
-                    f"Current Job Role":{position}"
+                    f"Education: {schools}\n"
+                    f"Current Job Role:{position}\n"
                     f"Current Organization":{company}"
                 )
             else:
