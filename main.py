@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
 import requests
+import time
 
 app = FastAPI()
 
@@ -191,7 +192,9 @@ async def webhook(request: Request):
                 headers=headers,
                 params={"personId": person_id}
             )
-
+            
+            time.sleep(10)
+            
             if response.status_code == 200:
                 data = response.json()
                 fulfillment_text = format_personality_analysis(data)
