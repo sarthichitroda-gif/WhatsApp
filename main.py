@@ -179,8 +179,6 @@ async def webhook(request: Request):
 
         elif intent == "GetPersonalityAnalysis":
             linkedin_url = params.get("linkedinUrl")
-            if not linkedin_url:
-                return {"fulfillmentText": "Please provide a LinkedIn URL."}
             
             # Step 1: Get personId from linkedinUrl
             person_id, error = get_person_id_from_linkedin(linkedin_url)
