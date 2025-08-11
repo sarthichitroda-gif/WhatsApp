@@ -132,10 +132,12 @@ async def webhook(request: Request):
                 education = data.get("education", [])
                 schools = ", ".join(edu.get("school") for edu in education[:2]) if education else "N/A"
 
-                positions=data.get("title", [])
-                position=", ".join(pos.get("title")for pos in positions[:1]) if positions else "N/A"
-                company=", ".join(comp.get("company")for comp in positions[:1]) if positions else "N/A"
-
+                positions = data.get("positions", [])
+                for pos in positions:
+                    if pos.get("current", False):
+                        current_title = pos.get("title", "N/A")
+                        current_company = pos.get("company", "N/A")
+                
                 fulfillment_text = (
                     f"Name: {full_name}\n"
                     f"Headline: {headline}\n"
@@ -143,8 +145,8 @@ async def webhook(request: Request):
                     f"LinkedIn URL: {linkedin_profile}\n"
                     f"Top Skills: {top_skills}\n"
                     f"Education: {schools}\n"
-                    f"Current Job Role:{position}\n"
-                    f"Current Organization:{company}"
+                    f"Current Job Role:{current_title}\n"
+                    f"Current Organization:{current_company}"
                 )
             else:
                 fulfillment_text = (
