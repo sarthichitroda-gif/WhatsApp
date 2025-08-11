@@ -18,7 +18,7 @@ def get_person_id_from_linkedin(linkedin_url: str):
     )
 
     if person_response.status_code != 200:
-        return None, f"Error fetching person: {person_response.status_code} - {person_response.text}"
+        return None, f"Please make sure the input is in proper format https://www.linkedin.com/in/userid"
 
     person_data = person_response.json()
 
@@ -134,7 +134,7 @@ async def webhook(request: Request):
                 fulfillment_text = f"Here’s the result: {data}"
             else:
                 fulfillment_text = (
-                    f"There was an error fetching the details of the user. Make sure it is in correct format [please try: https://www.linkedin.com/in/{userId}/]"
+                    f"There was an error fetching the details of the user. Please try again later "
                 )
 
         elif intent == "GetPerson":
@@ -155,7 +155,6 @@ async def webhook(request: Request):
                 location = data.get("location", "N/A")
                 linkedin_profile = data.get("linkedinUrl", "N/A")
                 person_id = data.get("personId", "N/A")
-                user_id=data.get("userId", "N/A")
 
                 # Example: top 3 skills
                 skills = data.get("skills", [])
@@ -175,7 +174,7 @@ async def webhook(request: Request):
                 )
             else:
                 fulfillment_text = (
-                    f"There was an error fetching the details of the user. Make sure it is proper format (https://www.linkedin.com/in/{user_id})"
+                    f"There was an error fetching the details of the user. Please try again later."
                 )
 
         elif intent == "GetPersonalityAnalysis":
@@ -198,7 +197,7 @@ async def webhook(request: Request):
                 fulfillment_text = format_personality_analysis(data)
             else:
                 fulfillment_text = (
-                    f"There was an error fetching the details of the user. Make sure it is proper format (https://www.linkedin.com/in/{user_id})"
+                    f"There was an error fetching the details of the user. Please try again later"
                 )
 
         else:
