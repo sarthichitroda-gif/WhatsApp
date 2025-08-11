@@ -139,8 +139,6 @@ async def webhook(request: Request):
 
         elif intent == "GetPerson":
             linkedin_url = params.get("linkedinUrl")
-            if not linkedin_url:
-                return {"fulfillmentText": "Please provide a LinkedIn URL."}
 
             response = requests.get(
                 f"{API_BASE_URL}/get-person",
