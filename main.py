@@ -134,7 +134,7 @@ async def webhook(request: Request):
                 fulfillment_text = f"Here’s the result: {data}"
             else:
                 fulfillment_text = (
-                    f"There was an error fetching the details of the user. Please try again after some time.""
+                    f"There was an error fetching the details of the user. Make sure it is in correct format [please try: https://www.linkedin.com/in/{userId}/]"
                 )
 
         elif intent == "GetPerson":
@@ -155,6 +155,7 @@ async def webhook(request: Request):
                 location = data.get("location", "N/A")
                 linkedin_profile = data.get("linkedinUrl", "N/A")
                 person_id = data.get("personId", "N/A")
+                user_id=data.get("userId", "N/A")
 
                 # Example: top 3 skills
                 skills = data.get("skills", [])
@@ -174,7 +175,7 @@ async def webhook(request: Request):
                 )
             else:
                 fulfillment_text = (
-                    f"There was an error fetching the details of the user. Please try again after some time."
+                    f"There was an error fetching the details of the user. Make sure it is proper format (https://www.linkedin.com/in/{user_id})"
                 )
 
         elif intent == "GetPersonalityAnalysis":
@@ -197,7 +198,7 @@ async def webhook(request: Request):
                 fulfillment_text = format_personality_analysis(data)
             else:
                 fulfillment_text = (
-                    f"There was an error fetching the details of the user. Please try again after some time."
+                    f"There was an error fetching the details of the user. Make sure it is proper format (https://www.linkedin.com/in/{user_id})"
                 )
 
         else:
