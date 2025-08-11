@@ -105,39 +105,7 @@ async def webhook(request: Request):
     fulfillment_text = "Sorry, I couldn't process your request."
 
     try:
-        if intent in ["GetSearchHistory", "GetServiceStatus"]:
-            linkedin_url = params.get("linkedinUrl")
-            if not linkedin_url:
-                return {"fulfillmentText": "Please provide a LinkedIn URL."}
-
-            # Step 1: Get Person ID from LinkedIn
-            person_id, error = get_person_id_from_linkedin(linkedin_url)
-            if error:
-                return {"fulfillmentText": error}
-
-            # Step 2: Call the correct API based on intent
-            if intent == "GetSearchHistory":
-                endpoint = "person-search-history"
-                param_key = "userId"
-            else:
-                endpoint = "person-service-status"
-                param_key = "personId"
-
-            response = requests.get(
-                f"{API_BASE_URL}/{endpoint}",
-                headers=headers,
-                params={param_key: person_id}
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-                fulfillment_text = f"Here’s the result: {data}"
-            else:
-                fulfillment_text = (
-                    f"return None, Please make sure the input is in proper format https://www.linkedin.com/in/userid"
-                )
-
-        elif intent == "GetPerson":
+        if intent == "GetPerson":
             linkedin_url = params.get("linkedinUrl")
 
             response = requests.get(
