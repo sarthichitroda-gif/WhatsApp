@@ -1,35 +1,58 @@
+import json
 from fastapi import FastAPI, Request
 import requests
-import json
+from google.auth import default
+from google.auth.transport.requests import Request as GoogleAuthRequest
 
-# Your Gemini API key for Google Vertex AI (Gemini/PaLM)
-GEMINI_API_KEY = "AIzaSyAnKoMBJc-M8PYmmhZFS7FFbha47eDgh84"
-ENDPOINT = "https://us-central1-aiplatform.googleapis.com/v1/projects/google/locations/us-central1/publishers/google/models/text-bison@001:generateText"
+# Vertex AI endpoint
+PROJECT_ID = "magiq-ai"
+LOCATION = "us-central1"
+MODEL = "gemini-2.5-flash-lite"
+ENDPOINT = f"https://{LOCATION}-aiplatform.googleapis.com/v1/projects/{PROJECT_ID}/locations/{LOCATION}/publishers/google/models/{MODEL}:generateContent"
 
 # Your custom people-intel-service API key
 API_BASE_URL = "https://people-intel-service-test-3lu6lw5c5q-as.a.run.app/api/v1"
 API_KEY = "YOUR_API_KEY"  # Replace with your actual API key here
-
 headers = {"Authorization": f"Bearer {API_KEY}"} if API_KEY else {}
 
 app = FastAPI()
 
+def get_gcloud_access_token():
+    # Get credentials from environment or default location
+    credentials, project = default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+
+    # Refresh token if expired
+    credentials.refresh(GoogleAuthRequest())
+
+    return credentials.token
+
+
 def call_gemini_summarize(text: str) -> str:
+    """Send text to Vertex AI Gemini model for summarization."""
+    token = get_gcloud_access_token()
     payload = {
-        "prompt": {
-            "text": f"Summarize the following LinkedIn posts into a concise paragraph:\n\n{text}"
-        },
-        "temperature": 0.5,
-        "maxOutputTokens": 256,
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {
+                        "text": f"Summarize the following LinkedIn posts into a concise paragraph:\n\n{text}"
+                    }
+                ]
+            }
+        ]
     }
     response = requests.post(
-        f"{ENDPOINT}?key={GEMINI_API_KEY}",
-        headers={"Content-Type": "application/json"},
+        ENDPOINT,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        },
         data=json.dumps(payload),
     )
     if response.status_code == 200:
         res_json = response.json()
-        return res_json["candidates"][0]["output"]
+        return res_json["candidates"][0]["content"]["parts"][0]["text"]
     else:
         return f"Error summarizing posts: {response.text}"
 
@@ -41,7 +64,7 @@ def get_person_id_from_linkedin(linkedin_url: str):
     )
 
     if person_response.status_code != 200:
-        return None, f"Please make sure the input is in proper format https://www.linkedin.com/in/userid"
+        return None, f"Error fetching person: {person_response.status_code} - {person_response.text}"
 
     person_data = person_response.json()
     person_id = person_data.get("data", {}).get("personId")
@@ -175,7 +198,7 @@ async def webhook(request: Request):
                 )
             else:
                 fulfillment_text = (
-                    "Please make sure the input is in proper format https://www.linkedin.com/in/userid"
+                    f"{response.status_code} - {response.text}"
                 )
 
         elif intent == "GetPersonalityAnalysis":
@@ -195,7 +218,7 @@ async def webhook(request: Request):
                 fulfillment_text = format_personality_analysis(data)
             else:
                 fulfillment_text = (
-                    "Please make sure the input is in proper format https://www.linkedin.com/in/userid"
+                    f"Error fetching personality analysis: {response.status_code} - {response.text}"
                 )
 
         else:
