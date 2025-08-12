@@ -1,5 +1,5 @@
 import json
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, BackgroundTasks
 import requests
 from google.auth import default
 from google.auth.transport.requests import Request as GoogleAuthRequest
@@ -17,28 +17,22 @@ headers = {"Authorization": f"Bearer {API_KEY}"} if API_KEY else {}
 
 app = FastAPI()
 
+# Simple in-memory caches; replace with Redis or DB for production
+person_results_cache = {}
+personality_results_cache = {}
+
 def get_gcloud_access_token():
-    # Get credentials from environment or default location
     credentials, project = default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
-
-    # Refresh token if expired
     credentials.refresh(GoogleAuthRequest())
-
     return credentials.token
 
-
 def call_gemini_summarize(text: str) -> str:
-    """Send text to Vertex AI Gemini model for summarization."""
     token = get_gcloud_access_token()
     payload = {
         "contents": [
             {
                 "role": "user",
-                "parts": [
-                    {
-                        "text": f"Summarize the following LinkedIn posts into a concise paragraph as if you are explaining it to another person:\n\n{text}"
-                    }
-                ]
+                "parts": [{"text": f"Summarize the following LinkedIn posts into a concise paragraph as if you are explaining it to another person:\n\n{text}"}]
             }
         ]
     }
@@ -138,88 +132,112 @@ Interests Detected:
 """
     return formatted
 
+def process_personality_analysis(linkedin_url: str, session_id: str):
+    person_id, error = get_person_id_from_linkedin(linkedin_url)
+    if error:
+        personality_results_cache[session_id] = f"Error getting person ID: {error}"
+        return
+
+    response = requests.get(
+        f"{API_BASE_URL}/person-personality-analysis",
+        headers=headers,
+        params={"personId": person_id}
+    )
+
+    if response.status_code == 200:
+        data = response.json()
+        formatted_result = format_personality_analysis(data)
+        personality_results_cache[session_id] = formatted_result
+    else:
+        personality_results_cache[session_id] = f"Error fetching personality analysis: {response.status_code} - {response.text}"
+
+def process_get_person(linkedin_url: str, session_id: str):
+    response = requests.get(
+        f"{API_BASE_URL}/get-person",
+        headers=headers,
+        params={"linkedinUrl": linkedin_url}
+    )
+
+    if response.status_code != 200:
+        person_results_cache[session_id] = f"Error fetching person: {response.status_code} - {response.text}"
+        return
+
+    data = response.json().get("data", {})
+
+    full_name = data.get("fullName", "N/A")
+    headline = data.get("headline", "N/A")
+    location = data.get("location", "N/A")
+    linkedin_profile = data.get("linkedinUrl", "N/A")
+
+    skills = data.get("skills", [])
+    top_skills = ", ".join(skill.get("name") for skill in skills[:3]) if skills else "N/A"
+
+    education = data.get("education", [])
+    schools = ", ".join(edu.get("school") for edu in education[:2]) if education else "N/A"
+
+    positions = data.get("positions", [])
+    current_title = "N/A"
+    current_company = "N/A"
+    for pos in positions:
+        if pos.get("endDate") is None:
+            current_title = pos.get("title", "N/A")
+            current_company = pos.get("company", "N/A")
+            break
+
+    posts = data.get("posts", [])[:5]
+    combined_text = "\n".join(post.get("content", "") for post in posts)
+
+    summary_text = call_gemini_summarize(combined_text)
+
+    formatted_text = (
+        f"Name: {full_name}\n"
+        f"Headline: {headline}\n"
+        f"Location: {location}\n"
+        f"LinkedIn URL: {linkedin_profile}\n"
+        f"Top Skills: {top_skills}\n"
+        f"Education: {schools}\n"
+        f"Current Job Role: {current_title}\n"
+        f"Current Organization: {current_company}\n\n"
+        f"Summary of Recent Posts:\n{summary_text}"
+    )
+
+    person_results_cache[session_id] = formatted_text
+
 @app.post("/webhook")
-async def webhook(request: Request):
+async def webhook(request: Request, background_tasks: BackgroundTasks):
     req = await request.json()
     intent = req.get("queryResult", {}).get("intent", {}).get("displayName")
     params = req.get("queryResult", {}).get("parameters", {})
+    session_id = req.get("session")
 
     fulfillment_text = "Sorry, I couldn't process your request."
 
     try:
         if intent == "GetPerson":
             linkedin_url = params.get("linkedinUrl")
+            background_tasks.add_task(process_get_person, linkedin_url, session_id)
+            fulfillment_text = "Thanks for your request! Fetching person info now. Please ask again shortly to get the results."
 
-            response = requests.get(
-                f"{API_BASE_URL}/get-person",
-                headers=headers,
-                params={"linkedinUrl": linkedin_url}
-            )
-
-            if response.status_code == 200:
-                resp_json = response.json()
-                data = resp_json.get("data", {})
-
-                full_name = data.get("fullName", "N/A")
-                headline = data.get("headline", "N/A")
-                location = data.get("location", "N/A")
-                linkedin_profile = data.get("linkedinUrl", "N/A")
-
-                skills = data.get("skills", [])
-                top_skills = ", ".join(skill.get("name") for skill in skills[:3]) if skills else "N/A"
-
-                education = data.get("education", [])
-                schools = ", ".join(edu.get("school") for edu in education[:2]) if education else "N/A"
-
-                positions = data.get("positions", [])
-                current_title = "N/A"
-                current_company = "N/A"
-                for pos in positions:
-                    if pos.get("endDate") is None:
-                        current_title = pos.get("title", "N/A")
-                        current_company = pos.get("company", "N/A")
-                        break
-
-                posts = data.get("posts", [])[:5]
-                combined_text = "\n".join(post.get("content", "") for post in posts)
-
-                summary_text = call_gemini_summarize(combined_text)
-
-                fulfillment_text = (
-                    f"Name: {full_name}\n"
-                    f"Headline: {headline}\n"
-                    f"Location: {location}\n"
-                    f"LinkedIn URL: {linkedin_profile}\n"
-                    f"Top Skills: {top_skills}\n"
-                    f"Education: {schools}\n"
-                    f"Current Job Role: {current_title}\n"
-                    f"Current Organization: {current_company}\n\n"
-                    f"Summary of Recent Posts:\n{summary_text}"
-                )
+        elif intent == "GetPersonResult":
+            result = person_results_cache.get(session_id)
+            if result:
+                fulfillment_text = result
+                del person_results_cache[session_id]
             else:
-                fulfillment_text = (
-                    f"{response.status_code} - {response.text}"
-                )
+                fulfillment_text = "Person info is still being processed or not found. Please wait a moment and try again."
 
         elif intent == "GetPersonalityAnalysis":
             linkedin_url = params.get("linkedinUrl")
-            person_id, error = get_person_id_from_linkedin(linkedin_url)
-            if error:
-                return {"fulfillmentText": error}
+            background_tasks.add_task(process_personality_analysis, linkedin_url, session_id)
+            fulfillment_text = "Thanks for your request! Personality analysis is being processed. Please ask again shortly to get the results."
 
-            response = requests.get(
-                f"{API_BASE_URL}/person-personality-analysis",
-                headers=headers,
-                params={"personId": person_id}
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-                fulfillment_text = format_personality_analysis(data)
+        elif intent == "GetPersonalityAnalysisResult":
+            result = personality_results_cache.get(session_id)
+            if result:
+                fulfillment_text = result
+                del personality_results_cache[session_id]
             else:
-                fulfillment_text = (
-                    f"Error fetching personality analysis: {response.status_code} - {response.text}"
-                )
+                fulfillment_text = "Your personality analysis is still processing or not found. Please wait a moment and try again."
 
         else:
             fulfillment_text = "Sorry, I don't recognize this request."
