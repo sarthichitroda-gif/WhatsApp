@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 import requests
 import time
+from gensim.summarization import summarize
 
 app = FastAPI()
 
@@ -138,6 +139,12 @@ async def webhook(request: Request):
                         current_title = pos.get("title", "N/A")
                         current_company = pos.get("company", "N/A")
                 
+                posts=data["data"]["posts"][:5]
+                post=[post["content"] for post in posts] 
+                combined_text="\n".join(post)
+                summary=summarize(combined_text, ratio=0.3)
+                print(summary)
+                
                 fulfillment_text = (
                     f"Name: {full_name}\n"
                     f"Headline: {headline}\n"
@@ -145,8 +152,9 @@ async def webhook(request: Request):
                     f"LinkedIn URL: {linkedin_profile}\n"
                     f"Top Skills: {top_skills}\n"
                     f"Education: {schools}\n"
-                    f"Current Job Role:{current_title}\n"
-                    f"Current Organization:{current_company}"
+                    f"Current Job Role: {current_title}\n"
+                    f"Current Organization: {current_company}"
+                    f"Top 5 Posts Summary: {summary}"
                 )
             else:
                 fulfillment_text = (
