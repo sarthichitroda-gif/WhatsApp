@@ -1,7 +1,10 @@
 from fastapi import FastAPI, Request
 import requests
 import time
-from gensim.summarization import summarize
+from sumy.parsers.plaintext import PlaintextParser
+from sumy.nlp.tokenizers import Tokenizer
+from sumy.summarizers.lex_rank import LexRankSummarizer
+
 
 app = FastAPI()
 
@@ -142,8 +145,11 @@ async def webhook(request: Request):
                 posts=data["data"]["posts"][:5]
                 post=[post["content"] for post in posts] 
                 combined_text="\n".join(post)
-                summary=summarize(combined_text, ratio=0.3)
-                print(summary)
+                parser = PlaintextParser.from_string(combined_text, Tokenizer("english"))
+                summarizer = LexRankSummarizer()
+
+                summary = summarizer(parser.document, sentences_count=5)  # Adjust sentence count as needed
+                summary_text = " ".join(str(sentence) for sentence in summary)
                 
                 fulfillment_text = (
                     f"Name: {full_name}\n"
