@@ -27,7 +27,7 @@ personality_results_cache = {}
 
 def get_gcloud_access_token():
     # Debug prints
-    creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS.json")
     print("GOOGLE_APPLICATION_CREDENTIALS:", creds_path)
     if creds_path:
         print("File exists?", os.path.exists(creds_path))
