@@ -7,7 +7,7 @@ from google.auth.transport.requests import Request as GoogleAuthRequest
 # Vertex AI endpoint
 PROJECT_ID = "magiq-ai"
 LOCATION = "us-central1"
-MODEL = "gemini-2.5-flash-lite"
+MODEL = "gemini-2.5-pro"
 ENDPOINT = f"https://{LOCATION}-aiplatform.googleapis.com/v1/projects/{PROJECT_ID}/locations/{LOCATION}/publishers/google/models/{MODEL}:generateContent"
 
 # Your custom people-intel-service API key
@@ -36,7 +36,7 @@ def call_gemini_summarize(text: str) -> str:
                 "role": "user",
                 "parts": [
                     {
-                        "text": f"Summarize the following LinkedIn posts into a concise paragraph:\n\n{text}"
+                        "text": f"Summarize the following LinkedIn posts into a concise paragraph as if you are explaining it to another person:\n\n{text}"
                     }
                 ]
             }
