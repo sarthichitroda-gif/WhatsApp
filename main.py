@@ -4,6 +4,7 @@ import requests
 from google.auth import default
 from google.auth.transport.requests import Request as GoogleAuthRequest
 import logging
+import os
 
 logging.basicConfig(level=logging.INFO)
 
@@ -25,8 +26,19 @@ person_results_cache = {}
 personality_results_cache = {}
 
 def get_gcloud_access_token():
-    credentials, project = default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
-    credentials.refresh(GoogleAuthRequest())
+    # Debug prints
+    creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    print("GOOGLE_APPLICATION_CREDENTIALS:", creds_path)
+    if creds_path:
+        print("File exists?", os.path.exists(creds_path))
+    else:
+        print("No GOOGLE_APPLICATION_CREDENTIALS environment variable set!")
+
+    # Load default credentials
+    from google.auth import default
+    credentials, project = default(
+        scopes=["https://www.googleapis.com/auth/cloud-platform"]
+    )
     return credentials.token
 
 def call_gemini_summarize(text: str) -> str:
