@@ -236,6 +236,7 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
                 if ctx.get("name", "").endswith("/contexts/getpersresult"):
                     linkedin_url = ctx.get("parameters", {}).get("linkedinUrl")
                     context_name = ctx.get("name")
+                    logging.info(f"Extracted linkedinUrl from context: {linkedin_url}")
                     break
 
             result = person_results_cache.get(session_id)
