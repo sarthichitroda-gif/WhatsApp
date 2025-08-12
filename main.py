@@ -8,6 +8,8 @@ import os
 
 logging.basicConfig(level=logging.INFO)
 
+gemini_key = os.getenv("GEMINI_API_KEY")
+
 # Vertex AI endpoint
 PROJECT_ID = "magiq-ai"
 LOCATION = "us-central1"
@@ -25,46 +27,38 @@ app = FastAPI()
 person_results_cache = {}
 personality_results_cache = {}
 
-def get_gcloud_access_token():
-    # Debug prints
-    creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS.json")
-    print("GOOGLE_APPLICATION_CREDENTIALS:", creds_path)
-    if creds_path:
-        print("File exists?", os.path.exists(creds_path))
-    else:
-        print("No GOOGLE_APPLICATION_CREDENTIALS environment variable set!")
-
-    # Load default credentials
-    from google.auth import default
-    credentials, project = default(
-        scopes=["https://www.googleapis.com/auth/cloud-platform"]
-    )
-    return credentials.token
-
 def call_gemini_summarize(text: str) -> str:
-    token = get_gcloud_access_token()
+    # Read API key from environment variable
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
+
     payload = {
         "contents": [
             {
                 "role": "user",
-                "parts": [{"text": f"Summarize the following LinkedIn posts into a concise paragraph as if you are explaining it to another person:\n{text}"}]
+                "parts": [{
+                    "text": (
+                        "Summarize the following LinkedIn posts into a concise paragraph "
+                        "as if you are explaining it to another person:\n"
+                        f"{text}"
+                    )
+                }]
             }
         ]
     }
+
     response = requests.post(
-        ENDPOINT,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
-        },
+        f"{ENDPOINT}?key={api_key}",  # Gemini API usually takes key in query param
+        headers={"Content-Type": "application/json"},
         data=json.dumps(payload),
     )
+
     if response.status_code == 200:
         res_json = response.json()
         return res_json["candidates"][0]["content"]["parts"][0]["text"]
     else:
         return f"Error summarizing posts: {response.text}"
-
 def get_person_id_from_linkedin(linkedin_url: str):
     person_response = requests.get(
         f"{API_BASE_URL}/get-person",
