@@ -222,6 +222,9 @@ def process_get_person(linkedin_url: str, session_id: str):
 
 @app.post("/webhook")
 async def webhook(request: Request, background_tasks: BackgroundTasks):
+    creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    logging.info(f"GOOGLE_APPLICATION_CREDENTIALS env var: {creds_path}")
+    logging.info(f"Credentials file exists: {os.path.exists(creds_path) if creds_path else 'No credentials path set'}")
     req = await request.json()
     logging.info(f"Full request JSON: {req}")  # DEBUG: see complete request body
     session_id = req.get("session")
