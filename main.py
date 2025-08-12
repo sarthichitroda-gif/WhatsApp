@@ -5,7 +5,6 @@ import json
 # Your Gemini API key for Google Vertex AI (Gemini/PaLM)
 GEMINI_API_KEY = "AIzaSyAnKoMBJc-M8PYmmhZFS7FFbha47eDgh84"
 ENDPOINT = "https://us-central1-aiplatform.googleapis.com/v1/projects/google/locations/us-central1/publishers/google/models/text-bison@001:generateText"
-"
 
 # Your custom people-intel-service API key
 API_BASE_URL = "https://people-intel-service-test-3lu6lw5c5q-as.a.run.app/api/v1"
