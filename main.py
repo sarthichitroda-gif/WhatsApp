@@ -229,7 +229,7 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
             fulfillment_text = "Thanks for your request! Fetching person info now. Please ask again shortly to get the results."
 
         elif intent == "GetPersonResult":
-            # Extract linkedinUrl from getpersresult input context parameters
+    # Extract linkedinUrl from getpersresult input context parameters
             linkedin_url = None
             context_name = None
             for ctx in output_contexts:
@@ -246,21 +246,21 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
             else:
                 fulfillment_text = "Person info is still being processed or not found. Please wait a moment and try again."
 
-            # Return outputContexts with linkedinUrl to keep context alive
+    # Return outputContexts with linkedinUrl to keep context alive
             if linkedin_url and context_name:
                 return {
                     "fulfillmentText": fulfillment_text,
                     "outputContexts": [
                         {
-                            "name": getpersresult,
-                            "lifespanCount": 5,
-                            "parameters": {
-                                "linkedinUrl": linkedin_url,
-                                "linkedinUrl.original": linkedin_url
-                            }
-                        }
-                    ]
+                    "name": context_name,
+                    "lifespanCount": 5,
+                    "parameters": {
+                        "linkedinUrl": linkedin_url,
+                        "linkedinUrl.original": linkedin_url
+                    }
                 }
+            ]
+        }
             else:
                 return {"fulfillmentText": fulfillment_text}
 
