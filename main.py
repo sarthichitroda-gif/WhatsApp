@@ -3,6 +3,9 @@ from fastapi import FastAPI, Request, BackgroundTasks
 import requests
 from google.auth import default
 from google.auth.transport.requests import Request as GoogleAuthRequest
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 # Vertex AI endpoint
 PROJECT_ID = "magiq-ai"
@@ -32,7 +35,7 @@ def call_gemini_summarize(text: str) -> str:
         "contents": [
             {
                 "role": "user",
-                "parts": [{"text": f"Summarize the following LinkedIn posts into a concise paragraph as if you are explaining it to another person:\n\n{text}"}]
+                "parts": [{"text": f"Summarize the following LinkedIn posts into a concise paragraph as if you are explaining it to another person:\n{text}"}]
             }
         ]
     }
@@ -152,6 +155,7 @@ def process_personality_analysis(linkedin_url: str, session_id: str):
         personality_results_cache[session_id] = f"Error fetching personality analysis: {response.status_code} - {response.text}"
 
 def process_get_person(linkedin_url: str, session_id: str):
+    logging.info(f"Started process_get_person for session {session_id} with LinkedIn URL {linkedin_url}")
     response = requests.get(
         f"{API_BASE_URL}/get-person",
         headers=headers,
@@ -202,13 +206,19 @@ def process_get_person(linkedin_url: str, session_id: str):
     )
 
     person_results_cache[session_id] = formatted_text
+    logging.info(f"Completed process_get_person for session {session_id}")
 
 @app.post("/webhook")
 async def webhook(request: Request, background_tasks: BackgroundTasks):
     req = await request.json()
+    logging.info(f"Full request JSON: {req}")  # DEBUG: see complete request body
+    session_id = req.get("session")
+    logging.info(f"Session ID: {session_id}")
     intent = req.get("queryResult", {}).get("intent", {}).get("displayName")
     params = req.get("queryResult", {}).get("parameters", {})
-    session_id = req.get("session")
+    output_contexts = req.get("queryResult", {}).get("outputContexts", [])
+
+    logging.info(f"Webhook called. Session: {session_id}, Intent: {intent}")
 
     fulfillment_text = "Sorry, I couldn't process your request."
 
@@ -219,12 +229,39 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
             fulfillment_text = "Thanks for your request! Fetching person info now. Please ask again shortly to get the results."
 
         elif intent == "GetPersonResult":
+            # Extract linkedinUrl from getpersresult input context parameters
+            linkedin_url = None
+            context_name = None
+            for ctx in output_contexts:
+                if ctx.get("name", "").endswith("/contexts/getpersresult"):
+                    linkedin_url = ctx.get("parameters", {}).get("linkedinUrl")
+                    context_name = ctx.get("name")
+                    break
+
             result = person_results_cache.get(session_id)
             if result:
                 fulfillment_text = result
                 del person_results_cache[session_id]
             else:
                 fulfillment_text = "Person info is still being processed or not found. Please wait a moment and try again."
+
+            # Return outputContexts with linkedinUrl to keep context alive
+            if linkedin_url and context_name:
+                return {
+                    "fulfillmentText": fulfillment_text,
+                    "outputContexts": [
+                        {
+                            "name": context_name,
+                            "lifespanCount": 5,
+                            "parameters": {
+                                "linkedinUrl": linkedin_url,
+                                "linkedinUrl.original": linkedin_url
+                            }
+                        }
+                    ]
+                }
+            else:
+                return {"fulfillmentText": fulfillment_text}
 
         elif intent == "GetPersonalityAnalysis":
             linkedin_url = params.get("linkedinUrl")
