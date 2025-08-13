@@ -239,14 +239,21 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
 
         elif intent == "GetPersonResult":
     # Extract linkedinUrl from getpersresult input context parameters
-            linkedin_url = None
-            context_name = None
-            for ctx in output_contexts:
-                if ctx.get("name", "").endswith("/contexts/getpersresult"):
-                    linkedin_url = ctx.get("parameters", {}).get("linkedinUrl")
-                    context_name = ctx.get("name")
-                    logging.info(f"Extracted linkedinUrl from context: {linkedin_url}")
-                    break
+            output_contexts = req.get("queryResult", {}).get("outputContexts", [])
+
+        logging.info(f"Output contexts: {json.dumps(output_contexts, indent=2)}")
+
+        linkedin_url = None
+        context_name = None
+        for ctx in output_contexts:
+            name = ctx.get("name", "")
+            params = ctx.get("parameters", {})
+            logging.info(f"Context: {name}, parameters: {params}")
+            if name.endswith("/contexts/getpersresult"):
+                linkedin_url = params.get("linkedinUrl")
+                context_name = name
+                logging.info(f"Extracted linkedinUrl from context: {linkedin_url}")
+                break
 
             result = person_results_cache.get(session_id)
             if result:
