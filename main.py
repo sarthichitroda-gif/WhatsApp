@@ -59,6 +59,8 @@ def call_gemini_summarize(text: str) -> str:
         return res_json["candidates"][0]["content"]["parts"][0]["text"]
     else:
         return f"Error summarizing posts: {response.text}"
+
+
 def get_person_id_from_linkedin(linkedin_url: str):
     person_response = requests.get(
         f"{API_BASE_URL}/get-person",
@@ -75,6 +77,7 @@ def get_person_id_from_linkedin(linkedin_url: str):
         return None, "Person ID not found in API response."
 
     return person_id, None
+
 
 def format_personality_analysis(data: dict) -> str:
     data = data.get("data", {})
@@ -141,6 +144,7 @@ Interests Detected:
 """
     return formatted
 
+
 def process_personality_analysis(linkedin_url: str, session_id: str):
     person_id, error = get_person_id_from_linkedin(linkedin_url)
     if error:
@@ -159,6 +163,7 @@ def process_personality_analysis(linkedin_url: str, session_id: str):
         personality_results_cache[session_id] = formatted_result
     else:
         personality_results_cache[session_id] = f"Error fetching personality analysis: {response.status_code} - {response.text}"
+
 
 def process_get_person(linkedin_url: str, session_id: str):
     logging.info(f"Started process_get_person for session {session_id} with LinkedIn URL {linkedin_url}")
@@ -214,6 +219,7 @@ def process_get_person(linkedin_url: str, session_id: str):
     person_results_cache[session_id] = formatted_text
     logging.info(f"Completed process_get_person for session {session_id}")
 
+
 @app.post("/webhook")
 async def webhook(request: Request, background_tasks: BackgroundTasks):
     creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
@@ -238,22 +244,21 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
             fulfillment_text = "Thanks for your request! Fetching person info now. Please ask again shortly to get the results."
 
         elif intent == "GetPersonResult":
-    # Extract linkedinUrl from getpersresult input context parameters
+            # Extract linkedinUrl from getpersresult input context parameters
             output_contexts = req.get("queryResult", {}).get("outputContexts", [])
+            logging.info(f"Output contexts: {json.dumps(output_contexts, indent=2)}")
 
-        logging.info(f"Output contexts: {json.dumps(output_contexts, indent=2)}")
-
-        linkedin_url = None
-        context_name = None
-        for ctx in output_contexts:
-            name = ctx.get("name", "")
-            params = ctx.get("parameters", {})
-            logging.info(f"Context: {name}, parameters: {params}")
-            if name.endswith("/contexts/getpersresult"):
-                linkedin_url = params.get("linkedinUrl")
-                context_name = name
-                logging.info(f"Extracted linkedinUrl from context: {linkedin_url}")
-                break
+            linkedin_url = None
+            context_name = None
+            for ctx in output_contexts:
+                name = ctx.get("name", "")
+                params = ctx.get("parameters", {})
+                logging.info(f"Context: {name}, parameters: {params}")
+                if name.endswith("/contexts/getpersresult"):
+                    linkedin_url = params.get("linkedinUrl")
+                    context_name = name
+                    logging.info(f"Extracted linkedinUrl from context: {linkedin_url}")
+                    break
 
             result = person_results_cache.get(session_id)
             if result:
@@ -262,21 +267,21 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
             else:
                 fulfillment_text = "Person info is still being processed or not found. Please wait a moment and try again."
 
-    # Return outputContexts with linkedinUrl to keep context alive
+            # Return outputContexts with linkedinUrl to keep context alive
             if linkedin_url and context_name:
                 return {
                     "fulfillmentText": fulfillment_text,
                     "outputContexts": [
                         {
-                    "name": context_name,
-                    "lifespanCount": 5,
-                    "parameters": {
-                        "linkedinUrl": linkedin_url,
-                        "linkedinUrl.original": linkedin_url
-                    }
+                            "name": context_name,
+                            "lifespanCount": 5,
+                            "parameters": {
+                                "linkedinUrl": linkedin_url,
+                                "linkedinUrl.original": linkedin_url
+                            }
+                        }
+                    ]
                 }
-            ]
-        }
             else:
                 return {"fulfillmentText": fulfillment_text}
 
