@@ -6,13 +6,7 @@ from google.auth.transport.requests import Request as GoogleAuthRequest
 import logging
 import os
 #from dotenv import load_dotenv
-
-#if os.environ.get("RENDER"):
-    # Skip loading .env because Render already has environment variables
- #   pass
-#else:
- #   from dotenv import load_dotenv
- #   load_dotenv()
+#load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 
@@ -55,7 +49,7 @@ def call_gemini_summarize(text: str) -> str:
                 "parts": [
                     {
                         "text": (
-                            "Summarize the following LinkedIn posts into a concise paragraph:\n"
+                            "Summarize user's LinkedIn posts and return a concise summary:\n"
                             f"{text}"
                         )
                     }
