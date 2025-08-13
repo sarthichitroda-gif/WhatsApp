@@ -7,7 +7,12 @@ import logging
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+if os.environ.get("RENDER"):
+    # Skip loading .env because Render already has environment variables
+    pass
+else:
+    from dotenv import load_dotenv
+    load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 
