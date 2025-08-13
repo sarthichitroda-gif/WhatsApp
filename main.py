@@ -5,60 +5,82 @@ from google.auth import default
 from google.auth.transport.requests import Request as GoogleAuthRequest
 import logging
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 
-gemini_key = os.getenv("GEMINI_API_KEY")
-
-# Vertex AI endpoint
+# Google Cloud Vertex AI details
 PROJECT_ID = "magiq-ai"
 LOCATION = "us-central1"
 MODEL = "gemini-2.5-pro"
 ENDPOINT = f"https://{LOCATION}-aiplatform.googleapis.com/v1/projects/{PROJECT_ID}/locations/{LOCATION}/publishers/google/models/{MODEL}:generateContent"
 
-# Your custom people-intel-service API key
+# Your custom people-intel-service API base and API key
 API_BASE_URL = "https://people-intel-service-test-3lu6lw5c5q-as.a.run.app/api/v1"
-API_KEY = "YOUR_API_KEY"  # Replace with your actual API key here
+API_KEY = os.getenv("PEOPLE_INTEL_API_KEY")  # Set this in your .env or environment securely
 headers = {"Authorization": f"Bearer {API_KEY}"} if API_KEY else {}
 
 app = FastAPI()
 
-# Simple in-memory caches; replace with Redis or DB for production
+# In-memory caches (for demo only)
 person_results_cache = {}
 personality_results_cache = {}
 
+
+def get_google_access_token() -> str:
+    """Obtain OAuth2 access token from service account credentials."""
+    credentials, project = default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+    credentials.refresh(GoogleAuthRequest())
+    return credentials.token
+
+
 def call_gemini_summarize(text: str) -> str:
-    # Read API key from environment variable
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
+    access_token = get_google_access_token()
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
 
     payload = {
         "contents": [
             {
                 "role": "user",
-                "parts": [{
-                    "text": (
-                        "Summarize the following LinkedIn posts into a concise paragraph "
-                        "as if you are explaining it to another person:\n"
-                        f"{text}"
-                    )
-                }]
+                "parts": [
+                    {
+                        "text": (
+                            "Summarize the following LinkedIn posts into a concise paragraph:\n"
+                            f"{text}"
+                        )
+                    }
+                ]
             }
-        ]
+        ],
+        "generationConfig": {
+            "temperature": 0.7,
+            "topP": 0.9,
+            "topK": 50,
+            "maxOutputTokens": 25600
+        }
     }
 
     response = requests.post(
-        f"{ENDPOINT}?key={api_key}",  # Gemini API usually takes key in query param
-        headers={"Content-Type": "application/json"},
-        data=json.dumps(payload),
+        ENDPOINT,
+        headers=headers,
+        json=payload  # you can pass json=payload instead of data=json.dumps(...)
     )
 
     if response.status_code == 200:
         res_json = response.json()
-        return res_json["candidates"][0]["content"]["parts"][0]["text"]
+
+        # Check for Gemini-style response
+        try:
+            return res_json["candidates"][0]["content"]["parts"][0]["text"]
+        except (KeyError, IndexError):
+            return f"Unexpected response format: {json.dumps(res_json, indent=2)}"
     else:
-        return f"Error summarizing posts: {response.text}"
+        return f"Error summarizing posts: {response.status_code} - {response.text}"
 
 
 def get_person_id_from_linkedin(linkedin_url: str):
@@ -244,7 +266,6 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
             fulfillment_text = "Thanks for your request! Fetching person info now. Please ask again shortly to get the results."
 
         elif intent == "GetPersonResult":
-            # First try to get linkedinUrl from output contexts (if any)
             linkedin_url = None
             context_name = None
             for ctx in output_contexts:
@@ -254,7 +275,6 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
                     logging.info(f"Extracted linkedinUrl from context: {linkedin_url}")
                     break
 
-            # If not found in contexts, try to get from queryResult parameters directly
             if not linkedin_url:
                 linkedin_url = params.get("linkedinUrl")
                 logging.info(f"Extracted linkedinUrl from queryResult parameters: {linkedin_url}")
@@ -301,5 +321,4 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
 
     except Exception as e:
         fulfillment_text = f"An error occurred: {str(e)}"
-
     return {"fulfillmentText": fulfillment_text}
