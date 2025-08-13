@@ -244,21 +244,20 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
             fulfillment_text = "Thanks for your request! Fetching person info now. Please ask again shortly to get the results."
 
         elif intent == "GetPersonResult":
-            # Extract linkedinUrl from getpersresult input context parameters
-            output_contexts = req.get("queryResult", {}).get("outputContexts", [])
-            logging.info(f"Output contexts: {json.dumps(output_contexts, indent=2)}")
-
+            # First try to get linkedinUrl from output contexts (if any)
             linkedin_url = None
             context_name = None
             for ctx in output_contexts:
-                name = ctx.get("name", "")
-                params = ctx.get("parameters", {})
-                logging.info(f"Context: {name}, parameters: {params}")
-                if name.endswith("/contexts/getpersresult"):
-                    linkedin_url = params.get("linkedinUrl")
-                    context_name = name
+                if ctx.get("name", "").endswith("/contexts/getpersresult"):
+                    linkedin_url = ctx.get("parameters", {}).get("linkedinUrl")
+                    context_name = ctx.get("name")
                     logging.info(f"Extracted linkedinUrl from context: {linkedin_url}")
                     break
+
+            # If not found in contexts, try to get from queryResult parameters directly
+            if not linkedin_url:
+                linkedin_url = params.get("linkedinUrl")
+                logging.info(f"Extracted linkedinUrl from queryResult parameters: {linkedin_url}")
 
             result = person_results_cache.get(session_id)
             if result:
@@ -267,7 +266,6 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
             else:
                 fulfillment_text = "Person info is still being processed or not found. Please wait a moment and try again."
 
-            # Return outputContexts with linkedinUrl to keep context alive
             if linkedin_url and context_name:
                 return {
                     "fulfillmentText": fulfillment_text,
