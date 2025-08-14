@@ -3,6 +3,5 @@ uvicorn
 requests
 google-auth
 logging
-os
 google.cloud
 google-cloud-dialogflow
