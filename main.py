@@ -263,7 +263,7 @@ def process_get_person(linkedin_url: str, session_id: str):
     trigger_event(
         project_id="magiq-ai",
         session_id=session_id.split('/')[-1],  # Extract session ID only
-        event_name="go_to_getpersonresult",
+        event_name="go_to_intent_getpersonresult",
         parameters={"linkedinUrl": linkedin_url}
     )
 
