@@ -27,6 +27,24 @@ app = FastAPI()
 person_results_cache = {}
 personality_results_cache = {}
 
+from google.cloud import dialogflow_v2 as dialogflow
+
+def trigger_event(project_id, session_id, event_name, parameters=None, language_code="en"):
+    """Trigger a Dialogflow intent via an event."""
+    session_client = dialogflow.SessionsClient()
+    session_path = session_client.session_path(project_id, session_id)
+
+    event_input = dialogflow.EventInput(
+        name=event_name,
+        parameters=parameters or {},
+        language_code=language_code
+    )
+    query_input = dialogflow.QueryInput(event=event_input)
+
+    response = session_client.detect_intent(
+        request={"session": session_path, "query_input": query_input}
+    )
+    logging.info(f"Triggered event {event_name}, response: {response.query_result.fulfillment_text}")
 
 def get_google_access_token() -> str:
     """Obtain OAuth2 access token from service account credentials."""
@@ -49,7 +67,7 @@ def call_gemini_summarize(text: str) -> str:
                 "parts": [
                     {
                         "text": (
-                            "Summarize user's LinkedIn posts and return a concise summary:\n"
+                            "Summarize user's LinkedIn posts and return a concise summary and return the results in such a :\n"
                             f"{text}"
                         )
                     }
@@ -237,8 +255,17 @@ def process_get_person(linkedin_url: str, session_id: str):
         f"Summary of Recent Posts:\n{summary_text}"
     )
 
+    # Store result
     person_results_cache[session_id] = formatted_text
     logging.info(f"Completed process_get_person for session {session_id}")
+
+    # Trigger GetPersonResult automatically
+    trigger_event(
+        project_id="magiq-ai",
+        session_id=session_id.split('/')[-1],  # Extract session ID only
+        event_name="go_to_getpersonresult",
+        parameters={"linkedinUrl": linkedin_url}
+    )
 
 
 @app.post("/webhook")
