@@ -108,7 +108,7 @@ async def webhook(request: Request):
         if intent == "GetPerson":
             linkedin_url = params.get("linkedinUrl")
 
-            response = requests.get(
+            response = requests.post(
                 f"{API_BASE_URL}/get-person-wa",
                 headers=headers,
                 params={"linkedinUrl": linkedin_url}
