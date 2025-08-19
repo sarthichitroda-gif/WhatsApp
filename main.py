@@ -134,7 +134,7 @@ async def webhook(request: Request):
 
                 positions = data.get("positions", [])
                 for pos in positions:
-                    if pos.get("endDate", null):
+                    if pos.get("endDate", None):
                         current_title = pos.get("title", "N/A")
                         current_company = pos.get("company", "N/A")
                 
