@@ -18,7 +18,7 @@ def get_person_id_from_linkedin(linkedin_url: str):
     )
 
     if person_response.status_code != 200:
-        return None, f"Please make sure the input is in proper format https://www.linkedin.com/in/userid"
+        return None, f"Error fetching person data: {response.status_code} - {response.text}"
 
     person_data = person_response.json()
 
