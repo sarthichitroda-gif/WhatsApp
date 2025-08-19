@@ -11,14 +11,16 @@ headers = {"Authorization": f"Bearer {API_KEY}"} if API_KEY else {}
 
 
 def get_person_id_from_linkedin(linkedin_url: str):
-    person_response = requests.get(
+    payload = {"linkedinUrl": linkedin_url}
+
+    person_response = requests.post(
         f"{API_BASE_URL}/get-person-wa",
-        headers=headers,
-        params={"linkedinUrl": linkedin_url}
+        headers={**headers, "Content-Type": "application/json"},
+        json=payload
     )
 
     if person_response.status_code != 200:
-        return None, f"Error fetching person data: {response.status_code} - {response.text}"
+        return None, f"Error fetching person data: {person_response.status_code} - {person_response.text}"
 
     person_data = person_response.json()
 
@@ -108,10 +110,10 @@ async def webhook(request: Request):
         if intent == "GetPerson":
             linkedin_url = params.get("linkedinUrl")
 
-            response = requests.post(
-                f"{API_BASE_URL}/get-person-wa",
-                headers=headers,
-                params={"linkedinUrl": linkedin_url}
+            payload = {"linkedinUrl": linkedin_url}
+            response = requests.post(f"{API_BASE_URL}/get-person-wa",
+            headers={**headers, "Content-Type": "application/json"},
+            json=payload
             )
 
             if response.status_code == 200:
